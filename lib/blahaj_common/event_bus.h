@@ -1,5 +1,7 @@
 // lib/blahaj_common/event_bus.h
 #pragma once
+// Not thread-safe. All on()/emit() calls must occur from the same task context.
+// Use EspNowTransport::poll() to ensure receive events are dispatched from loop().
 #include <functional>
 #include <map>
 #include <vector>

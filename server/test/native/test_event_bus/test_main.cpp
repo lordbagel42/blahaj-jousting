@@ -5,6 +5,9 @@
 
 using Bus = EventBus<GameEvent, GameContext>;
 
+void setUp() {}
+void tearDown() {}
+
 void test_no_handlers_emits_safely() {
     Bus bus;
     GameContext ctx{};

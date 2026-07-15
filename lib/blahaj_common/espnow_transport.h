@@ -2,6 +2,7 @@
 #pragma once
 #include <cstdint>
 #include <functional>
+#include <esp_now.h>
 #include "protocol.h"
 
 class EspNowTransport {
@@ -30,13 +31,28 @@ public:
     // Returns this device's own MAC address.
     void getMac(uint8_t out_mac[6]);
 
+    // Call from loop() to process pending received messages.
+    void poll();
+
 private:
     EspNowTransport() = default;
     EspNowTransport(const EspNowTransport&) = delete;
     EspNowTransport& operator=(const EspNowTransport&) = delete;
 
-    static void recvCallback(const esp_now_recv_info_t* info, const uint8_t* data, int len);
+    static void recvCallback(const uint8_t* mac, const uint8_t* data, int len);
     static void sendCallback(const uint8_t* mac, esp_now_send_status_t status);
+
+    static constexpr int RECV_QUEUE_SIZE = 8;
+
+    struct RecvEntry {
+        uint8_t mac[6];
+        uint8_t data[250];
+        int     len;
+    };
+
+    RecvEntry    _recv_queue[RECV_QUEUE_SIZE];
+    volatile int _recv_head = 0;
+    volatile int _recv_tail = 0;
 
     ReceiveCallback _recv_cb;
     SendCallback    _send_cb;

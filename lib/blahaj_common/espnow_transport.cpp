@@ -50,9 +50,25 @@ void EspNowTransport::getMac(uint8_t out_mac[6]) {
     esp_wifi_get_mac(WIFI_IF_STA, out_mac);
 }
 
-void EspNowTransport::recvCallback(const esp_now_recv_info_t* info, const uint8_t* data, int len) {
-    auto& cb = instance()._recv_cb;
-    if (cb) cb(info->src_addr, data, len);
+void EspNowTransport::recvCallback(const uint8_t* mac, const uint8_t* data, int len) {
+    auto& inst = instance();
+    int next_head = (inst._recv_head + 1) % RECV_QUEUE_SIZE;
+    if (next_head == inst._recv_tail) return;  // queue full, drop
+
+    RecvEntry& entry = inst._recv_queue[inst._recv_head];
+    memcpy(entry.mac, mac, 6);
+    int copy_len = len < 250 ? len : 250;
+    memcpy(entry.data, data, copy_len);
+    entry.len = copy_len;
+    inst._recv_head = next_head;  // publish (single-core: assignment is atomic)
+}
+
+void EspNowTransport::poll() {
+    while (_recv_tail != _recv_head) {
+        RecvEntry& entry = _recv_queue[_recv_tail];
+        if (_recv_cb) _recv_cb(entry.mac, entry.data, entry.len);
+        _recv_tail = (_recv_tail + 1) % RECV_QUEUE_SIZE;
+    }
 }
 
 void EspNowTransport::sendCallback(const uint8_t* mac, esp_now_send_status_t status) {
