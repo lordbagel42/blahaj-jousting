@@ -3,8 +3,8 @@
 #include <cstdint>
 #include "game_state.h"
 
-static constexpr uint8_t BROADCAST_ID = 0xFF;
-static constexpr uint8_t ESP_NOW_BROADCAST_MAC[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+inline constexpr uint8_t BROADCAST_ID = 0xFF;
+inline constexpr uint8_t ESP_NOW_BROADCAST_MAC[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
 enum class MessageType : uint8_t {
     HELLO               = 1,
@@ -53,6 +53,7 @@ struct GameStateBroadcastMsg {
     uint8_t       knockoffs[3];
     uint8_t       countdown_remaining;
     uint8_t       cars_eliminated;
+    uint8_t       last_knockoff_car_id;
 } __attribute__((packed));
 
 struct PingMsg {

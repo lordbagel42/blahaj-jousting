@@ -11,13 +11,14 @@ EspNowTransport& EspNowTransport::instance() {
     return inst;
 }
 
-void EspNowTransport::begin(uint8_t channel) {
+bool EspNowTransport::begin(uint8_t channel) {
     esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
 
-    if (esp_now_init() != ESP_OK) return;
+    if (esp_now_init() != ESP_OK) return false;
 
     esp_now_register_recv_cb(recvCallback);
     esp_now_register_send_cb(sendCallback);
+    return true;
 }
 
 bool EspNowTransport::send(const uint8_t* mac, const void* data, size_t len) {
@@ -27,14 +28,13 @@ bool EspNowTransport::send(const uint8_t* mac, const void* data, size_t len) {
 bool EspNowTransport::sendBroadcast(const void* data, size_t len) {
     if (!_broadcast_peer_added) {
         esp_now_peer_info_t peer{};
-        memset(peer.peer_addr, 0xFF, 6);
+        memcpy(peer.peer_addr, ESP_NOW_BROADCAST_MAC, 6);
         peer.channel = 0;
         peer.encrypt = false;
-        esp_now_add_peer(&peer);
-        _broadcast_peer_added = true;
+        _broadcast_peer_added = (esp_now_add_peer(&peer) == ESP_OK);
     }
-    static const uint8_t bcast[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
-    return esp_now_send(bcast, static_cast<const uint8_t*>(data), len) == ESP_OK;
+    if (!_broadcast_peer_added) return false;
+    return esp_now_send(ESP_NOW_BROADCAST_MAC, static_cast<const uint8_t*>(data), len) == ESP_OK;
 }
 
 bool EspNowTransport::addPeer(const uint8_t* mac) {

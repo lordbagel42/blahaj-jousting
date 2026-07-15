@@ -21,8 +21,14 @@ void test_drive_cmd_size() {
     TEST_ASSERT_EQUAL(5, sizeof(DriveCmdMsg));
 }
 
-void test_game_state_broadcast_fits_espnow() {
-    TEST_ASSERT_LESS_THAN(250, sizeof(GameStateBroadcastMsg));
+void test_knockoff_event_size() {
+    // header(3) + car_id(1) = 4
+    TEST_ASSERT_EQUAL(4, sizeof(KnockoffEventMsg));
+}
+
+void test_game_state_broadcast_size() {
+    // header(3) + state(1) + round(1) + round_wins(3) + knockoffs(3) + countdown(1) + cars_eliminated(1) + last_knockoff_car_id(1) = 14
+    TEST_ASSERT_EQUAL(14, sizeof(GameStateBroadcastMsg));
 }
 
 void test_header_fields() {
@@ -45,7 +51,8 @@ int main() {
     RUN_TEST(test_hello_msg_size);
     RUN_TEST(test_hello_ack_size);
     RUN_TEST(test_drive_cmd_size);
-    RUN_TEST(test_game_state_broadcast_fits_espnow);
+    RUN_TEST(test_knockoff_event_size);
+    RUN_TEST(test_game_state_broadcast_size);
     RUN_TEST(test_header_fields);
     return UNITY_END();
 }

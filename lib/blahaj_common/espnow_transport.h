@@ -13,7 +13,8 @@ public:
     static EspNowTransport& instance();
 
     // Call once in setup(), after WiFi.mode() has been set.
-    void begin(uint8_t channel);
+    // Returns false if esp_now_init() fails.
+    bool begin(uint8_t channel);
 
     // Send to a specific peer. Peer must be added first with addPeer().
     bool send(const uint8_t* mac, const void* data, size_t len);
