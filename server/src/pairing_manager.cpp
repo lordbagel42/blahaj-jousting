@@ -33,9 +33,10 @@ bool PairingManager::assignPair(uint8_t car_idx, uint8_t client_idx) {
 }
 
 void PairingManager::confirmPairings(EspNowTransport& transport, uint8_t server_seq) {
-    for (uint8_t i = 0; i < _cars.size(); i++) {
+    for (size_t i = 0; i < _cars.size(); i++) {
         auto& car = _cars[i];
         if (!car.paired) continue;
+        if (car.partner_slot >= _clients.size()) continue;
         auto& client = _clients[car.partner_slot];
 
         transport.addPeer(car.mac);

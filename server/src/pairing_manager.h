@@ -26,7 +26,7 @@ public:
     void onHello(const uint8_t* src_mac, const HelloMsg& msg, uint32_t now_ms);
 
     // Assign client at client_idx to car at car_idx (0-based into their respective lists).
-    // Returns false if indices are out of range or already paired differently.
+    // Returns false if indices are out of range.
     bool assignPair(uint8_t car_idx, uint8_t client_idx);
 
     // Send HELLO_ACK to all paired devices.
