@@ -41,7 +41,7 @@ void test_knockoff_eliminates_car() {
     GameEngine engine(bus);
     engine.startMatch(0);
     engine.tick(3001);
-    engine.onKnockoff(0);
+    engine.onKnockoff(0, 0);
     TEST_ASSERT_EQUAL(1, engine.context().knockoffs[0]);
     TEST_ASSERT_TRUE(engine.context().cars_eliminated & 0x01);
 }
@@ -51,8 +51,8 @@ void test_two_knockoffs_end_round() {
     GameEngine engine(bus);
     engine.startMatch(0);
     engine.tick(3001);
-    engine.onKnockoff(0);
-    engine.onKnockoff(1);
+    engine.onKnockoff(0, 0);
+    engine.onKnockoff(1, 0);
     TEST_ASSERT_EQUAL((uint8_t)GameState::ROUND_END, (uint8_t)engine.context().state);
 }
 
@@ -61,8 +61,8 @@ void test_survivor_gets_round_win() {
     GameEngine engine(bus);
     engine.startMatch(0);
     engine.tick(3001);
-    engine.onKnockoff(0);
-    engine.onKnockoff(1);
+    engine.onKnockoff(0, 0);
+    engine.onKnockoff(1, 0);
     // Car slot 2 survived
     TEST_ASSERT_EQUAL(1, engine.context().round_wins[2]);
     TEST_ASSERT_EQUAL(0, engine.context().round_wins[0]);
@@ -74,8 +74,8 @@ void test_duplicate_knockoff_ignored() {
     GameEngine engine(bus);
     engine.startMatch(0);
     engine.tick(3001);
-    engine.onKnockoff(0);
-    engine.onKnockoff(0);  // duplicate
+    engine.onKnockoff(0, 0);
+    engine.onKnockoff(0, 0);  // duplicate
     TEST_ASSERT_EQUAL(1, engine.context().knockoffs[0]);
 }
 
@@ -88,8 +88,8 @@ void test_match_end_fires_after_rounds_to_win() {
     for (int r = 0; r < ROUNDS_TO_WIN; r++) {
         engine.startMatch(0);
         engine.tick(3001);
-        engine.onKnockoff(0);
-        engine.onKnockoff(1);
+        engine.onKnockoff(0, 0);
+        engine.onKnockoff(1, 0);
         engine.tick(10000);  // advance past round end pause
     }
     TEST_ASSERT_TRUE(match_ended);
@@ -98,8 +98,31 @@ void test_match_end_fires_after_rounds_to_win() {
 void test_knockoff_ignored_when_not_racing() {
     Bus bus;
     GameEngine engine(bus);
-    engine.onKnockoff(0);  // LOBBY state
+    engine.onKnockoff(0, 0);  // LOBBY state
     TEST_ASSERT_EQUAL(0, engine.context().knockoffs[0]);
+}
+
+void test_second_match_starts_with_clean_scores() {
+    Bus bus;
+    bool match_ended = false;
+    bus.on(GameEvent::MATCH_END, [&](const GameContext&) { match_ended = true; });
+
+    GameEngine engine(bus);
+    // Win first match
+    for (int r = 0; r < ROUNDS_TO_WIN; r++) {
+        engine.startMatch(0);
+        engine.tick(3001);
+        engine.onKnockoff(0, 0);
+        engine.onKnockoff(1, 0);
+        engine.tick(10000);  // advance past round end pause → LOBBY
+    }
+    TEST_ASSERT_TRUE(match_ended);
+
+    // Start second match — scores should be reset
+    engine.startMatch(0);
+    TEST_ASSERT_EQUAL((uint8_t)GameState::COUNTDOWN, (uint8_t)engine.context().state);
+    TEST_ASSERT_EQUAL(0, engine.context().round_wins[2]);  // winner's wins reset
+    TEST_ASSERT_EQUAL(0, engine.context().round);
 }
 
 int main() {
@@ -114,5 +137,6 @@ int main() {
     RUN_TEST(test_duplicate_knockoff_ignored);
     RUN_TEST(test_match_end_fires_after_rounds_to_win);
     RUN_TEST(test_knockoff_ignored_when_not_racing);
+    RUN_TEST(test_second_match_starts_with_clean_scores);
     return UNITY_END();
 }

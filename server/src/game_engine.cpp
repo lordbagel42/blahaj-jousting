@@ -39,35 +39,37 @@ void GameEngine::startMatch(uint32_t now_ms) {
     transitionTo(GameState::COUNTDOWN, now_ms);
 }
 
-void GameEngine::endRound() {
+void GameEngine::endRound(uint32_t now_ms) {
     if (_ctx.state != GameState::RACING) return;
-    // NOTE: passes now_ms=0 to transitionTo; _round_end_entered_ms will be 0.
-    // Tests advance past the pause via tick(10000). In production, endRound()
-    // should ideally receive millis() — a known simplification for now.
-    transitionTo(GameState::ROUND_END, 0);
+    transitionTo(GameState::ROUND_END, now_ms);
 }
 
-void GameEngine::onKnockoff(uint8_t car_slot) {
+void GameEngine::onKnockoff(uint8_t car_slot, uint32_t now_ms) {
     if (_ctx.state != GameState::RACING) return;
     if (car_slot >= CARS_PER_ROUND) return;
-    if (_ctx.cars_eliminated & (1 << car_slot)) return;  // already out
+    if (_ctx.cars_eliminated & (1 << car_slot)) return;
 
     _ctx.knockoffs[car_slot]++;
     _ctx.cars_eliminated |= (1 << car_slot);
     _ctx.last_knockoff_car_id = car_slot;
     _bus.emit(GameEvent::KNOCKOFF, _ctx);
 
-    checkRoundEnd();
+    checkRoundEnd(now_ms);
 }
 
 void GameEngine::transitionTo(GameState next, uint32_t now_ms) {
     _ctx.state = next;
+
+    // Pre-set state for accurate STATE_CHANGED snapshot.
+    if (next == GameState::COUNTDOWN) {
+        _ctx.countdown_remaining = COUNTDOWN_SECONDS;
+        _last_countdown_val = -1;
+    }
+
     _bus.emit(GameEvent::STATE_CHANGED, _ctx);
 
     switch (next) {
         case GameState::COUNTDOWN:
-            _ctx.countdown_remaining = COUNTDOWN_SECONDS;
-            _last_countdown_val = -1;
             _bus.emit(GameEvent::MATCH_START, _ctx);
             break;
 
@@ -92,6 +94,7 @@ void GameEngine::transitionTo(GameState next, uint32_t now_ms) {
             // Check match win.
             for (int i = 0; i < CARS_PER_ROUND; i++) {
                 if (_ctx.round_wins[i] >= ROUNDS_TO_WIN) {
+                    _match_ended = true;
                     _bus.emit(GameEvent::MATCH_END, _ctx);
                     break;
                 }
@@ -100,7 +103,11 @@ void GameEngine::transitionTo(GameState next, uint32_t now_ms) {
         }
 
         case GameState::LOBBY:
-            // Reset per-round state, keep match scores.
+            if (_match_ended) {
+                memset(_ctx.round_wins, 0, sizeof(_ctx.round_wins));
+                _ctx.round = 0;
+                _match_ended = false;
+            }
             memset(_ctx.knockoffs, 0, sizeof(_ctx.knockoffs));
             _ctx.cars_eliminated = 0;
             _ctx.last_knockoff_car_id = 0xFF;
@@ -108,9 +115,9 @@ void GameEngine::transitionTo(GameState next, uint32_t now_ms) {
     }
 }
 
-void GameEngine::checkRoundEnd() {
+void GameEngine::checkRoundEnd(uint32_t now_ms) {
     if (eliminatedCount() >= CARS_PER_ROUND - 1) {
-        transitionTo(GameState::ROUND_END, 0);
+        transitionTo(GameState::ROUND_END, now_ms);
     }
 }
 

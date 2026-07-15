@@ -19,16 +19,16 @@ public:
 
     // Referee actions — no-ops if state is wrong.
     void startMatch(uint32_t now_ms);
-    void endRound();
+    void endRound(uint32_t now_ms);
 
     // Called when a knockoff event is confirmed.
-    void onKnockoff(uint8_t car_slot);
+    void onKnockoff(uint8_t car_slot, uint32_t now_ms);
 
     const GameContext& context() const { return _ctx; }
 
 private:
     void transitionTo(GameState next, uint32_t now_ms = 0);
-    void checkRoundEnd();
+    void checkRoundEnd(uint32_t now_ms);
     int  eliminatedCount() const;
 
     Bus&        _bus;
@@ -36,4 +36,5 @@ private:
     uint32_t    _last_tick_ms         = 0;
     uint32_t    _round_end_entered_ms = 0;
     int         _last_countdown_val   = -1;
+    bool        _match_ended          = false;
 };
