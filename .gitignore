@@ -1,0 +1,26 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+.clangd/
+.gcc-flags.json
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Build Artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.elf
+*.bin
+*.hex
