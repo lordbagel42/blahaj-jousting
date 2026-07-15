@@ -52,7 +52,6 @@ static void onReceive(const uint8_t* mac, const uint8_t* data, int len) {
             if (len >= (int)sizeof(KnockoffEventMsg)) {
                 const auto* msg = reinterpret_cast<const KnockoffEventMsg*>(data);
                 game.onKnockoff(msg->car_id, now);
-                broadcastGameState();
             }
             break;
 
