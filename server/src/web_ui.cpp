@@ -28,22 +28,29 @@ void WebUI::begin() {
 
     // /api/pair accepts JSON array: [{car: 0, client: 0}, {car: 1, client: 1}, ...]
     _server.on("/api/pair", HTTP_POST,
-        [](AsyncWebServerRequest* req) {},  // body handler does the work
+        [](AsyncWebServerRequest* req) {},
         nullptr,
         [this](AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t index, size_t total) {
-            if (index == 0) _pending_pairs.clear();
-            // Accumulate body — for small JSON this fires once
-            JsonDocument doc;
-            if (deserializeJson(doc, data, len) == DeserializationError::Ok) {
-                for (JsonObject obj : doc.as<JsonArray>()) {
-                    PairAssignment pa;
-                    pa.car_idx    = obj["car"].as<uint8_t>();
-                    pa.client_idx = obj["client"].as<uint8_t>();
-                    _pending_pairs.push_back(pa);
-                }
-                _pending_pair = true;
+            static String body;
+            if (index == 0) {
+                body = "";
             }
-            if (index + len == total) {
+            body += String((char*)data, len);
+            if (index + len >= total) {
+                JsonDocument doc;
+                std::vector<PairAssignment> local_pairs;
+                if (deserializeJson(doc, body) == DeserializationError::Ok) {
+                    for (JsonObject obj : doc.as<JsonArray>()) {
+                        PairAssignment pa;
+                        pa.car_idx    = obj["car"].as<uint8_t>();
+                        pa.client_idx = obj["client"].as<uint8_t>();
+                        local_pairs.push_back(pa);
+                    }
+                }
+                taskENTER_CRITICAL(&_pair_mux);
+                _pending_pairs = std::move(local_pairs);
+                _pending_pair = true;
+                taskEXIT_CRITICAL(&_pair_mux);
                 req->send(200, "application/json", "{\"ok\":true}");
             }
         }

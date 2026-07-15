@@ -90,8 +90,8 @@ function render(d) {
       return `<div style="margin:.3rem 0">Car #${car.device_id}: <select id="pair_${i}">${opts}</select></div>`;
     }).join('');
     document.getElementById('pairings').innerHTML = selects;
-    document.getElementById('confirmBtn').disabled = d.clients.length === 0;
   }
+  document.getElementById('confirmBtn').disabled = d.cars.length === 0 || d.clients.length === 0;
 
   // Match state
   const stateNames = ['LOBBY','COUNTDOWN','RACING','ROUND_END'];

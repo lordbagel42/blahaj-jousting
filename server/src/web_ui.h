@@ -28,6 +28,7 @@ private:
     bool _pending_end   = false;
     bool _pending_pair  = false;
     std::vector<PairAssignment> _pending_pairs;
+    portMUX_TYPE _pair_mux = portMUX_INITIALIZER_UNLOCKED;
 
     String buildStatusJson(uint32_t now_ms);
 };
