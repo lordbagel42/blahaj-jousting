@@ -10,12 +10,14 @@ void CarNode::begin() {
 
     auto& t = EspNowTransport::instance();
     t.onReceive([this](const uint8_t* mac, const uint8_t* data, int len) {
-        onReceive(mac, data, len);
+        onReceive(mac, data, len, millis());
     });
     if (!t.begin(ESPNOW_CHANNEL)) {
         Serial.println("ESP-NOW init failed");
         return;
     }
+
+    _last_drive_ms = millis();
 
     // Broadcast HELLO so server can discover us.
     HelloMsg hello{};
@@ -40,12 +42,12 @@ void CarNode::tick(uint32_t now_ms) {
 
     // Keepalive ping.
     if (_paired && (now_ms - _last_ping_ms) >= PING_INTERVAL_MS) {
-        sendPing(now_ms);
+        sendPing();
         _last_ping_ms = now_ms;
     }
 }
 
-void CarNode::onReceive(const uint8_t* mac, const uint8_t* data, int len) {
+void CarNode::onReceive(const uint8_t* mac, const uint8_t* data, int len, uint32_t now_ms) {
     if (len < (int)sizeof(MessageHeader)) return;
     const auto* hdr = reinterpret_cast<const MessageHeader*>(data);
 
@@ -70,7 +72,7 @@ void CarNode::onReceive(const uint8_t* mac, const uint8_t* data, int len) {
 
             const auto* cmd = reinterpret_cast<const DriveCmdMsg*>(data);
             _driver->drive(cmd->throttle, cmd->steering);
-            _last_drive_ms = millis();
+            _last_drive_ms = now_ms;
             break;
         }
 
@@ -83,8 +85,8 @@ void CarNode::onReceive(const uint8_t* mac, const uint8_t* data, int len) {
             _ctx.countdown_remaining   = msg->countdown_remaining;
             _ctx.cars_eliminated       = msg->cars_eliminated;
             _ctx.last_knockoff_car_id  = msg->last_knockoff_car_id;
-            memcpy(_ctx.round_wins, msg->round_wins, 3);
-            memcpy(_ctx.knockoffs,  msg->knockoffs,  3);
+            memcpy(_ctx.round_wins, msg->round_wins, sizeof(_ctx.round_wins));
+            memcpy(_ctx.knockoffs,  msg->knockoffs,  sizeof(_ctx.knockoffs));
 
             if (prev != _ctx.state) {
                 if (_ctx.state == GameState::RACING)
@@ -115,8 +117,7 @@ void CarNode::onKnockoffTriggered() {
     EspNowTransport::instance().send(_server_mac, &msg, sizeof(msg));
 }
 
-void CarNode::sendPing(uint32_t now_ms) {
-    (void)now_ms;
+void CarNode::sendPing() {
     PingMsg ping{};
     ping.header.type   = MessageType::PING;
     ping.header.src_id = _assigned_id;

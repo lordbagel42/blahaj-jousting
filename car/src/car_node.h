@@ -25,9 +25,9 @@ public:
     const GameContext& gameContext() const { return _ctx; }
 
 private:
-    void onReceive(const uint8_t* mac, const uint8_t* data, int len);
+    void onReceive(const uint8_t* mac, const uint8_t* data, int len, uint32_t now_ms);
     void onKnockoffTriggered();
-    void sendPing(uint32_t now_ms);
+    void sendPing();
 
     MotorDriver*      _driver;
     KnockoffDetector* _detector;
