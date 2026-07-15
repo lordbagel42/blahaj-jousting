@@ -12,13 +12,16 @@ KnockoffDetector::KnockoffDetector(uint8_t pin, bool active_low,
 void KnockoffDetector::tick(uint32_t now_ms) {
     // In lockout window — ignore all input.
     if (_triggered && (now_ms - _trigger_time_ms) < _lockout_ms) return;
-    _triggered = false;
+    if (_triggered) {
+        _triggered = false;
+        _change_time_ms = now_ms;  // restart debounce from lockout exit
+    }
 
     bool raw = digitalRead(_pin);
     bool active = _active_low ? !raw : raw;
 
-    if (active != _last_raw) {
-        _last_raw = active;
+    if (active != _last_active) {
+        _last_active = active;
         _change_time_ms = now_ms;
     }
 
