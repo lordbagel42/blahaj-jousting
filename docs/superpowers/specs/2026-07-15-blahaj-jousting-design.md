@@ -3,7 +3,7 @@
 **Date:** 2026-07-15  
 **Platform:** ESP32C3 Supermini × 3 roles (server, client, car)  
 **Transport:** ESP-NOW (direct peer-to-peer, 1–3ms latency)  
-**Match format:** 3-car free-for-all, best-of-N rounds; round ends when referee hits End Round or a configurable knockoff threshold is reached; fewest knockoffs suffered = round winner
+**Match format:** 3-car free-for-all, best-of-N rounds; round ends when 2 of 3 sharks are knocked off (last shark standing wins) or referee hits End Round; match winner is first to win N rounds
 
 ---
 
@@ -75,13 +75,15 @@ All payloads fit within ESP-NOW's 250-byte limit. Duplicate suppression uses the
 
 ## Pairing Flow
 
-1. Server boots in **AP+STA** WiFi mode, creates `BlahajJousting` hotspot, starts ESP-NOW
-2. Cars and clients boot, broadcast `HELLO` (device type + compile-time `DEVICE_ID`) to the server's MAC — set once via `build_flags = -D SERVER_MAC=...` in each target's `platformio.ini`
-3. Server adds devices to unassigned pool; management UI shows them live
+**No MAC addresses are hardcoded anywhere.** All devices share one build flag: `ESPNOW_CHANNEL` (default 1). All devices must be on the same channel for broadcast to work; this is guaranteed because the server's AP fixes the channel and clients/cars explicitly set their channel to match via `esp_wifi_set_channel()`.
+
+1. Server boots in **AP+STA** WiFi mode on `ESPNOW_CHANNEL`, creates `BlahajJousting` AP, starts ESP-NOW
+2. Cars and clients boot, set their channel to `ESPNOW_CHANNEL`, broadcast `HELLO` to `FF:FF:FF:FF:FF:FF` (ESP-NOW broadcast)
+3. Server receives `HELLO`; the ESP-NOW receive callback provides the sender's MAC automatically — server adds them as a peer and registers them in the unassigned pool
 4. Admin connects to `BlahajJousting` WiFi, opens `192.168.4.1`
 5. Admin assigns each client to a car via the UI, clicks **Confirm Pairings**
-6. Server sends `HELLO_ACK` to each device with their assigned ID and partner MAC
-7. Devices register each other as ESP-NOW peers; control path goes live
+6. Server sends `HELLO_ACK` to each device containing their assigned ID and their partner's MAC
+7. Each device learns the server's MAC from the `HELLO_ACK` callback; devices peer with each other and with the server; control path goes live
 8. UI shows per-device connection health (last-seen timestamp, red if stale >2s)
 
 ---
@@ -194,8 +196,9 @@ car.setKnockoffPin(PIN_SHARK_SWITCH, ACTIVE_LOW);
 ## Scoring
 
 - Server tracks `knockoffs_suffered[car_id]` — incremented on each accepted `KNOCKOFF_EVENT`
-- Round winner = car with fewest knockoffs suffered
-- Match winner = first to win `N` rounds (configurable compile-time constant, default 2)
+- Round ends automatically when 2 of 3 cars have been knocked off; round winner = the surviving car
+- Referee can also force-end a round at any time via the management UI
+- Match winner = first car to win `N` rounds (configurable compile-time constant `ROUNDS_TO_WIN`, default 2)
 - Scores included in every `GAME_STATE_BROADCAST`; clients and displays consume them freely
 
 ---
