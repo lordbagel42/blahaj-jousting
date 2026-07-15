@@ -10,6 +10,7 @@ void ClientNode::begin() {
     });
     if (!t.begin(ESPNOW_CHANNEL)) {
         Serial.println("ERROR: ESP-NOW init failed");
+        return;
     }
 
     HelloMsg hello{};
