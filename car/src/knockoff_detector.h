@@ -28,7 +28,7 @@ private:
 
     TriggerCallback _callback;
 
-    bool     _last_raw       = false;
+    bool     _last_active    = false;
     uint32_t _change_time_ms = 0;
     bool     _triggered      = false;
     uint32_t _trigger_time_ms= 0;
