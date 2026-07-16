@@ -23,8 +23,8 @@ enum class GameEvent : uint8_t {
 struct GameContext {
     GameState state                = GameState::LOBBY;
     uint8_t   round                = 0;
-    uint8_t   round_wins[3]        = {};
-    uint8_t   knockoffs[3]         = {};
+    uint8_t   round_wins[2]        = {};
+    uint8_t   knockoffs[2]         = {};
     uint8_t   countdown_remaining  = 0;
     uint8_t   cars_eliminated      = 0;   // bitmask: bit N = car slot N knocked out this round
     uint8_t   last_knockoff_car_id = 0xFF;

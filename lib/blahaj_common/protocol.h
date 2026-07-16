@@ -78,8 +78,8 @@ struct GameStateBroadcastMsg {
     MessageHeader header;
     GameState     state;
     uint8_t       round;
-    uint8_t       round_wins[3];
-    uint8_t       knockoffs[3];
+    uint8_t       round_wins[2];
+    uint8_t       knockoffs[2];
     uint8_t       countdown_remaining;
     uint8_t       cars_eliminated;
     uint8_t       last_knockoff_car_id;

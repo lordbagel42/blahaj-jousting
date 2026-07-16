@@ -27,10 +27,10 @@ void test_knockoff_event_size() {
 }
 
 void test_game_state_broadcast_size() {
-    // header(3) + state(1) + round(1) + round_wins(3) + knockoffs(3) + countdown(1)
+    // header(3) + state(1) + round(1) + round_wins(2) + knockoffs(2) + countdown(1)
     // + cars_eliminated(1) + last_knockoff_car_id(1) + pair_count(1)
-    // + pairs(8 * PairInfo(5) = 40) + led_brightness(1) + idle_blue(1) = 57
-    TEST_ASSERT_EQUAL(57, sizeof(GameStateBroadcastMsg));
+    // + pairs(8 * PairInfo(5) = 40) + led_brightness(1) + idle_blue(1) = 55
+    TEST_ASSERT_EQUAL(55, sizeof(GameStateBroadcastMsg));
 }
 
 void test_header_fields() {
