@@ -23,5 +23,15 @@ this insanity has a full object oriented API built on top of somewhere around a 
 
 Total cost: ~$88
 
-
 made with love & nearly lethal levels of caffeine by https://github.com/lordbagel42,  https://github.com/williamprime, and https://github.com/kaipereira. and claude.
+
+# images n things
+
+<img width="4912" height="3264" alt="_DSC3500" src="https://github.com/user-attachments/assets/484fb6b5-05fd-4756-96c3-626442d2d30f" />
+<img width="4912" height="3264" alt="_DSC3499" src="https://github.com/user-attachments/assets/0b40fdc2-c931-436f-b7e0-cd4d42f36a5a" />
+<img width="4912" height="3264" alt="_DSC3498" src="https://github.com/user-attachments/assets/32328ec7-3324-4338-8073-80aea3b708c0" />
+<img width="4912" height="3264" alt="_DSC3497" src="https://github.com/user-attachments/assets/d3ba62f6-ab2c-4ea6-9ffa-2d2bdcffe245" />
+<img width="4912" height="3264" alt="_DSC3496" src="https://github.com/user-attachments/assets/7f732105-3da0-49d5-b344-5ba5d4a92cc6" />
+<img width="4912" height="3264" alt="_DSC3495" src="https://github.com/user-attachments/assets/e6382091-dda6-49b0-8928-49b14dd72f93" />
+<img width="4912" height="3264" alt="_DSC3494" src="https://github.com/user-attachments/assets/c2ae25e0-f473-455e-837e-dfd64c5603ed" />
+<img width="4912" height="3264" alt="_DSC3493" src="https://github.com/user-attachments/assets/e292d6d8-d895-4207-8beb-e7fbfa85291b" />
