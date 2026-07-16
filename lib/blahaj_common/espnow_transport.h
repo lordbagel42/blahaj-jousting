@@ -2,7 +2,12 @@
 #pragma once
 #include <cstdint>
 #include <functional>
+#if defined(ESP8266)
+#include <c_types.h>
+#include <espnow.h>
+#else
 #include <esp_now.h>
+#endif
 #include "protocol.h"
 
 class EspNowTransport {
@@ -40,8 +45,13 @@ private:
     EspNowTransport(const EspNowTransport&) = delete;
     EspNowTransport& operator=(const EspNowTransport&) = delete;
 
+#if defined(ESP8266)
+    static void recvCallback(uint8_t* mac, uint8_t* data, uint8_t len);
+    static void sendCallback(uint8_t* mac, uint8_t status);
+#else
     static void recvCallback(const uint8_t* mac, const uint8_t* data, int len);
     static void sendCallback(const uint8_t* mac, esp_now_send_status_t status);
+#endif
 
     static constexpr int RECV_QUEUE_SIZE = 8;
 

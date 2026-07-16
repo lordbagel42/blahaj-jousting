@@ -7,8 +7,8 @@ void test_message_header_size() {
 }
 
 void test_hello_msg_size() {
-    // header(3) + device_type(1) + device_id(1) = 5
-    TEST_ASSERT_EQUAL(5, sizeof(HelloMsg));
+    // header(3) + device_type(1) + device_id(1) + axis_mask(1) = 6
+    TEST_ASSERT_EQUAL(6, sizeof(HelloMsg));
 }
 
 void test_hello_ack_size() {
@@ -17,8 +17,8 @@ void test_hello_ack_size() {
 }
 
 void test_drive_cmd_size() {
-    // header(3) + throttle(1) + steering(1) = 5
-    TEST_ASSERT_EQUAL(5, sizeof(DriveCmdMsg));
+    // header(3) + throttle(1) + steering(1) + axis_mask(1) = 6
+    TEST_ASSERT_EQUAL(6, sizeof(DriveCmdMsg));
 }
 
 void test_knockoff_event_size() {
@@ -27,8 +27,10 @@ void test_knockoff_event_size() {
 }
 
 void test_game_state_broadcast_size() {
-    // header(3) + state(1) + round(1) + round_wins(3) + knockoffs(3) + countdown(1) + cars_eliminated(1) + last_knockoff_car_id(1) = 14
-    TEST_ASSERT_EQUAL(14, sizeof(GameStateBroadcastMsg));
+    // header(3) + state(1) + round(1) + round_wins(3) + knockoffs(3) + countdown(1)
+    // + cars_eliminated(1) + last_knockoff_car_id(1) + pair_count(1)
+    // + pairs(8 * PairInfo(5) = 40) + led_brightness(1) + idle_blue(1) = 57
+    TEST_ASSERT_EQUAL(57, sizeof(GameStateBroadcastMsg));
 }
 
 void test_header_fields() {

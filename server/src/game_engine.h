@@ -21,6 +21,10 @@ public:
     void startMatch(uint32_t now_ms);
     void endRound(uint32_t now_ms);
 
+    // Wipes round/wins/knockoffs and returns to LOBBY, regardless of
+    // current state. Does not touch pairings (that's PairingManager's job).
+    void reset();
+
     // Called when a knockoff event is confirmed.
     void onKnockoff(uint8_t car_slot, uint32_t now_ms);
 

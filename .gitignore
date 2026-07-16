@@ -24,3 +24,6 @@ Thumbs.db
 *.elf
 *.bin
 *.hex
+
+# Native referee simulator build output
+referee/sim/build/

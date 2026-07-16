@@ -1,9 +1,15 @@
 #include "client_node.h"
 #include <Arduino.h>
 
-ClientNode::ClientNode(InputProvider& input) : _input(&input) {}
+ClientNode::ClientNode(InputProvider& input, uint8_t axis_mask)
+    : _input(&input), _axis_mask(axis_mask) {}
 
 void ClientNode::begin() {
+#if defined(ESP8266)
+    pinMode(PIN_LED, OUTPUT);
+    digitalWrite(PIN_LED, HIGH);  // active LOW: off
+#endif
+
     auto& t = EspNowTransport::instance();
     t.onReceive([this](const uint8_t* mac, const uint8_t* data, int len) {
         onReceive(mac, data, len);
@@ -13,17 +19,20 @@ void ClientNode::begin() {
         return;
     }
 
-    HelloMsg hello{};
-    hello.header.type   = MessageType::HELLO;
-    hello.header.src_id = DEVICE_ID;
-    hello.header.seq    = _seq++;
-    hello.device_type   = DeviceType::CLIENT;
-    hello.device_id     = DEVICE_ID;
-    t.sendBroadcast(&hello, sizeof(hello));
+    sendHello();
 }
 
 void ClientNode::tick(uint32_t now_ms) {
     EspNowTransport::instance().poll();
+
+    // Periodic HELLO announce. Fast while unpaired, slower once paired, but
+    // never silent — keeps the referee's device list populated across a
+    // referee reboot and lets the server re-establish our pairing if we
+    // rebooted (recovery: neither side gets stuck).
+    uint32_t hello_interval = _paired ? PAIRED_HELLO_INTERVAL_MS : HELLO_INTERVAL_MS;
+    if ((now_ms - _last_hello_ms) >= hello_interval) {
+        sendHello();
+    }
 
     if (!_paired) return;
 
@@ -51,6 +60,7 @@ void ClientNode::onReceive(const uint8_t* mac, const uint8_t* data, int len) {
         case MessageType::HELLO_ACK: {
             if (len < (int)sizeof(HelloAckMsg)) break;
             const auto* ack = reinterpret_cast<const HelloAckMsg*>(data);
+            if (ack->assigned_id == 0xFE) break;  // referee registration ack, not ours
             _assigned_id = ack->assigned_id;
             memcpy(_server_mac, mac, 6);
             memcpy(_car_mac, ack->partner_mac, 6);
@@ -86,6 +96,24 @@ void ClientNode::onReceive(const uint8_t* mac, const uint8_t* data, int len) {
         case MessageType::PONG:
             break;
 
+        case MessageType::LED_CMD:
+            if (len >= (int)sizeof(LedCmdMsg)) {
+                const auto* msg = reinterpret_cast<const LedCmdMsg*>(data);
+                if (msg->target_type == DeviceType::CLIENT && msg->target_id == DEVICE_ID) {
+                    Serial.printf("[LED] client#%d %s\n", DEVICE_ID, msg->on ? "ON" : "OFF");
+#if defined(ESP8266)
+                    digitalWrite(PIN_LED, msg->on ? LOW : HIGH);  // active LOW
+#endif
+                }
+            }
+            break;
+
+        case MessageType::REBOOT_CMD:
+            Serial.println("[REBOOT_CMD] restarting...");
+            delay(50);
+            ESP.restart();
+            break;
+
         default: break;
     }
 }
@@ -97,6 +125,7 @@ void ClientNode::sendDriveCommand(const DriveCommand& cmd) {
     msg.header.seq    = _seq++;
     msg.throttle      = cmd.throttle;
     msg.steering      = cmd.steering;
+    msg.axis_mask     = _axis_mask;
     EspNowTransport::instance().send(_car_mac, &msg, sizeof(msg));
 }
 
@@ -106,4 +135,16 @@ void ClientNode::sendPing() {
     ping.header.src_id = _assigned_id;
     ping.header.seq    = _seq++;
     EspNowTransport::instance().send(_server_mac, &ping, sizeof(ping));
+}
+
+void ClientNode::sendHello() {
+    _last_hello_ms = millis();
+    HelloMsg hello{};
+    hello.header.type   = MessageType::HELLO;
+    hello.header.src_id = DEVICE_ID;
+    hello.header.seq    = _seq++;
+    hello.device_type   = DeviceType::CLIENT;
+    hello.device_id     = DEVICE_ID;
+    hello.axis_mask     = _axis_mask;
+    EspNowTransport::instance().sendBroadcast(&hello, sizeof(hello));
 }

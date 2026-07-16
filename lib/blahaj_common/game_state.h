@@ -36,6 +36,8 @@ struct DriveCommand {
 };
 
 enum class DeviceType : uint8_t {
-    CAR    = 1,
-    CLIENT = 2,
+    CAR     = 1,
+    CLIENT  = 2,
+    REFEREE = 3,
+    SERVER  = 4,
 };

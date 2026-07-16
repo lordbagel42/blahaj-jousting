@@ -13,8 +13,12 @@ DriveCommand JoystickInput::read() {
 }
 
 int8_t JoystickInput::mapAxis(int raw) const {
-    // Map 0..4095 → -127..127
-    int centered = (raw * 254 / 4095) - 127;
+#if defined(ESP8266)
+    constexpr int ADC_MAX = 1023;  // ESP8266: single 10-bit ADC (A0)
+#else
+    constexpr int ADC_MAX = 4095;  // ESP32: 12-bit ADC
+#endif
+    int centered = (raw * 254 / ADC_MAX) - 127;
     if (centered > -_deadzone && centered < _deadzone) return 0;
     return static_cast<int8_t>(centered);
 }

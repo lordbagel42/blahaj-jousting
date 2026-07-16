@@ -44,6 +44,14 @@ void GameEngine::endRound(uint32_t now_ms) {
     transitionTo(GameState::ROUND_END, now_ms);
 }
 
+void GameEngine::reset() {
+    _ctx = GameContext{};
+    _match_ended        = false;
+    _last_countdown_val = -1;
+    _round_end_entered_ms = 0;
+    _bus.emit(GameEvent::STATE_CHANGED, _ctx);
+}
+
 void GameEngine::onKnockoff(uint8_t car_slot, uint32_t now_ms) {
     if (_ctx.state != GameState::RACING) return;
     if (car_slot >= CARS_PER_ROUND) return;

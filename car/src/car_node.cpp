@@ -1,12 +1,23 @@
 // car/src/car_node.cpp
 #include "car_node.h"
 #include <Arduino.h>
+#if defined(ESP8266)
+#include <ESP8266WiFi.h>
+#else
+#include <esp_wifi.h>
+#endif
 
-CarNode::CarNode(MotorDriver& driver, KnockoffDetector& detector)
-    : _driver(&driver), _detector(&detector) {}
+CarNode::CarNode(MotorDriver& driver, KnockoffDetector& detector,
+                 UltrasonicSensor* sonar)
+    : _driver(&driver), _detector(&detector), _sonar(sonar) {}
 
 void CarNode::begin() {
     _detector->onTrigger([this]() { onKnockoffTriggered(); });
+
+#if defined(ESP8266)
+    pinMode(PIN_LED, OUTPUT);
+    digitalWrite(PIN_LED, HIGH);  // active LOW: off
+#endif
 
     auto& t = EspNowTransport::instance();
     t.onReceive([this](const uint8_t* mac, const uint8_t* data, int len) {
@@ -17,33 +28,44 @@ void CarNode::begin() {
         return;
     }
 
-    _last_drive_ms = millis();
-
-    // Broadcast HELLO so server can discover us.
-    HelloMsg hello{};
-    hello.header.type   = MessageType::HELLO;
-    hello.header.src_id = DEVICE_ID;
-    hello.header.seq    = _seq++;
-    hello.device_type   = DeviceType::CAR;
-    hello.device_id     = DEVICE_ID;
-    t.sendBroadcast(&hello, sizeof(hello));
+    sendHello();
 }
 
 void CarNode::tick(uint32_t now_ms) {
     EspNowTransport::instance().poll();
     _detector->tick(now_ms);
+    if (_sonar) _sonar->tick(now_ms);
 
-    // Watchdog: stop motors if no drive command received recently.
-    bool racing  = _ctx.state == GameState::RACING;
-    bool timeout = (now_ms - _last_drive_ms) > WATCHDOG_TIMEOUT_MS;
-    if (!racing || timeout) {
-        _driver->stop();
+    // Bench motor test (TEST_DRIVE_CMD) overrides normal control, the watchdog
+    // and the sonar cutoff — but only until _test_until_ms, so a dropped "stop"
+    // command can never leave the motors running.
+    if (now_ms < _test_until_ms) {
+        _driver->drive(_test_throttle, _test_steering);
+    } else {
+        // Watchdog: stop motors if either axis hasn't reported recently (each
+        // axis may come from a separate physical client device), or if the
+        // ultrasonic sensor reads past the cutoff (car lifted off the surface).
+        bool racing         = _ctx.state == GameState::RACING;
+        bool throttle_stale = (now_ms - _last_throttle_ms) > WATCHDOG_TIMEOUT_MS;
+        bool steering_stale = (now_ms - _last_steering_ms) > WATCHDOG_TIMEOUT_MS;
+        if (!racing || throttle_stale || steering_stale || sonarCutoff()) {
+            _driver->stop();
+        }
     }
 
     // Keepalive ping.
     if (_paired && (now_ms - _last_ping_ms) >= PING_INTERVAL_MS) {
         sendPing();
         _last_ping_ms = now_ms;
+    }
+
+    // Periodic HELLO announce. Fast while unpaired (to pair quickly); slower
+    // once paired, but never silent — this keeps the referee's device list
+    // populated even across a referee reboot, and lets the server re-establish
+    // our pairing if WE rebooted (recovery: neither side gets stuck).
+    uint32_t hello_interval = _paired ? PAIRED_HELLO_INTERVAL_MS : HELLO_INTERVAL_MS;
+    if ((now_ms - _last_hello_ms) >= hello_interval) {
+        sendHello();
     }
 }
 
@@ -55,13 +77,15 @@ void CarNode::onReceive(const uint8_t* mac, const uint8_t* data, int len, uint32
         case MessageType::HELLO_ACK: {
             if (len < (int)sizeof(HelloAckMsg)) break;
             const auto* ack = reinterpret_cast<const HelloAckMsg*>(data);
+            if (ack->assigned_id == 0xFE) break;  // referee registration ack, not ours
+            bool was_paired = _paired;
             _assigned_id = ack->assigned_id;
             memcpy(_server_mac, mac, 6);
 
             // Register client as a peer so we can receive DriveCmd from it.
             EspNowTransport::instance().addPeer(ack->partner_mac);
             _paired = true;
-            Serial.printf("Paired: id=%d\n", _assigned_id);
+            if (!was_paired) Serial.printf("Paired: id=%d\n", _assigned_id);
             break;
         }
 
@@ -71,8 +95,16 @@ void CarNode::onReceive(const uint8_t* mac, const uint8_t* data, int len, uint32
             if (_ctx.state != GameState::RACING) break;
 
             const auto* cmd = reinterpret_cast<const DriveCmdMsg*>(data);
-            _driver->drive(cmd->throttle, cmd->steering);
-            _last_drive_ms = now_ms;
+            if (cmd->axis_mask & DRIVE_AXIS_THROTTLE) {
+                _last_throttle    = cmd->throttle;
+                _last_throttle_ms = now_ms;
+            }
+            if (cmd->axis_mask & DRIVE_AXIS_STEERING) {
+                _last_steering    = cmd->steering;
+                _last_steering_ms = now_ms;
+            }
+            if (sonarCutoff()) { _driver->stop(); break; }  // off-surface guard
+            _driver->drive(_last_throttle, _last_steering);
             break;
         }
 
@@ -103,6 +135,34 @@ void CarNode::onReceive(const uint8_t* mac, const uint8_t* data, int len, uint32
         case MessageType::PONG:
             break;
 
+        case MessageType::LED_CMD:
+            if (len >= (int)sizeof(LedCmdMsg)) {
+                const auto* msg = reinterpret_cast<const LedCmdMsg*>(data);
+                if (msg->target_type == DeviceType::CAR && msg->target_id == DEVICE_ID) {
+                    Serial.printf("[LED] car#%d %s\n", DEVICE_ID, msg->on ? "ON" : "OFF");
+#if defined(ESP8266)
+                    digitalWrite(PIN_LED, msg->on ? LOW : HIGH);  // active LOW
+#endif
+                }
+            }
+            break;
+
+        case MessageType::REBOOT_CMD:
+            Serial.println("[REBOOT_CMD] restarting...");
+            delay(50);
+            ESP.restart();
+            break;
+
+        case MessageType::TEST_DRIVE_CMD: {
+            if (len < (int)sizeof(TestDriveCmdMsg)) break;
+            const auto* msg = reinterpret_cast<const TestDriveCmdMsg*>(data);
+            if (msg->target_id != DEVICE_ID && msg->target_id != BROADCAST_ID) break;
+            _test_throttle = msg->throttle;
+            _test_steering = msg->steering;
+            _test_until_ms = now_ms + TEST_DRIVE_HOLD_MS;
+            break;
+        }
+
         default: break;
     }
 }
@@ -115,6 +175,24 @@ void CarNode::onKnockoffTriggered() {
     msg.header.seq    = _seq++;
     msg.car_id        = _assigned_id;
     EspNowTransport::instance().send(_server_mac, &msg, sizeof(msg));
+}
+
+void CarNode::sendHello() {
+    _last_hello_ms = millis();
+#if defined(ESP8266)
+    uint8_t prim = WiFi.channel();
+#else
+    uint8_t prim; wifi_second_chan_t sec;
+    esp_wifi_get_channel(&prim, &sec);
+#endif
+    HelloMsg hello{};
+    hello.header.type   = MessageType::HELLO;
+    hello.header.src_id = DEVICE_ID;
+    hello.header.seq    = _seq++;
+    hello.device_type   = DeviceType::CAR;
+    hello.device_id     = DEVICE_ID;
+    bool bc = EspNowTransport::instance().sendBroadcast(&hello, sizeof(hello));
+    Serial.printf("[HELLO] ch=%d bcast=%d\n", prim, bc);
 }
 
 void CarNode::sendPing() {

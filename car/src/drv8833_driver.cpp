@@ -8,6 +8,9 @@ static inline int clampInt(int v, int lo, int hi) {
 
 DRV8833Driver::DRV8833Driver(uint8_t ain1, uint8_t ain2, uint8_t bin1, uint8_t bin2)
     : _ain1(ain1), _ain2(ain2), _bin1(bin1), _bin2(bin2) {
+#if defined(ESP8266)
+    analogWriteRange(255);  // match ESP32's default 8-bit duty resolution
+#endif
     pinMode(_ain1, OUTPUT); pinMode(_ain2, OUTPUT);
     pinMode(_bin1, OUTPUT); pinMode(_bin2, OUTPUT);
     stop();

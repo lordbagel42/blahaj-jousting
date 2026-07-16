@@ -10,6 +10,7 @@ struct DeviceInfo {
     uint8_t    mac[6]       = {};
     DeviceType type         = DeviceType::CAR;
     uint8_t    device_id    = 0;
+    uint8_t    axis_mask    = 0;     // CLIENT only: DRIVE_AXIS_* role
     uint8_t    assigned_id  = 0xFF;  // slot index once assigned
     uint8_t    partner_slot = 0xFF;  // index into other list (cars/clients)
     uint32_t   last_seen_ms = 0;
@@ -31,6 +32,11 @@ public:
 
     // Send HELLO_ACK to all paired devices.
     void confirmPairings(EspNowTransport& transport, uint8_t server_seq);
+
+    // If the device with this MAC is paired, re-send the HELLO_ACK for its
+    // pair. Lets a device that rebooted (and came back up unpaired) re-learn
+    // its pairing without referee intervention. Returns true if sent.
+    bool reconfirm(const uint8_t* mac, EspNowTransport& transport, uint8_t server_seq);
 
     void updateLastSeen(const uint8_t* mac, uint32_t now_ms);
 
