@@ -46,13 +46,13 @@ void test_knockoff_eliminates_car() {
     TEST_ASSERT_TRUE(engine.context().cars_eliminated & 0x01);
 }
 
-void test_two_knockoffs_end_round() {
+void test_single_knockoff_ends_round() {
+    // With 2 cars, one knockoff leaves a single survivor → round ends.
     Bus bus;
     GameEngine engine(bus);
     engine.startMatch(0);
     engine.tick(3001);
     engine.onKnockoff(0, 0);
-    engine.onKnockoff(1, 0);
     TEST_ASSERT_EQUAL((uint8_t)GameState::ROUND_END, (uint8_t)engine.context().state);
 }
 
@@ -62,11 +62,9 @@ void test_survivor_gets_round_win() {
     engine.startMatch(0);
     engine.tick(3001);
     engine.onKnockoff(0, 0);
-    engine.onKnockoff(1, 0);
-    // Car slot 2 survived
-    TEST_ASSERT_EQUAL(1, engine.context().round_wins[2]);
+    // Car slot 1 survived
+    TEST_ASSERT_EQUAL(1, engine.context().round_wins[1]);
     TEST_ASSERT_EQUAL(0, engine.context().round_wins[0]);
-    TEST_ASSERT_EQUAL(0, engine.context().round_wins[1]);
 }
 
 void test_duplicate_knockoff_ignored() {
@@ -88,8 +86,7 @@ void test_match_end_fires_after_rounds_to_win() {
     for (int r = 0; r < ROUNDS_TO_WIN; r++) {
         engine.startMatch(0);
         engine.tick(3001);
-        engine.onKnockoff(0, 0);
-        engine.onKnockoff(1, 0);
+        engine.onKnockoff(0, 0);  // car 1 survives and wins each round
         engine.tick(10000);  // advance past round end pause
     }
     TEST_ASSERT_TRUE(match_ended);
@@ -112,8 +109,7 @@ void test_second_match_starts_with_clean_scores() {
     for (int r = 0; r < ROUNDS_TO_WIN; r++) {
         engine.startMatch(0);
         engine.tick(3001);
-        engine.onKnockoff(0, 0);
-        engine.onKnockoff(1, 0);
+        engine.onKnockoff(0, 0);  // car 1 survives and wins each round
         engine.tick(10000);  // advance past round end pause → LOBBY
     }
     TEST_ASSERT_TRUE(match_ended);
@@ -121,7 +117,7 @@ void test_second_match_starts_with_clean_scores() {
     // Start second match — scores should be reset
     engine.startMatch(0);
     TEST_ASSERT_EQUAL((uint8_t)GameState::COUNTDOWN, (uint8_t)engine.context().state);
-    TEST_ASSERT_EQUAL(0, engine.context().round_wins[2]);  // winner's wins reset
+    TEST_ASSERT_EQUAL(0, engine.context().round_wins[1]);  // winner's wins reset
     TEST_ASSERT_EQUAL(0, engine.context().round);
 }
 
@@ -132,7 +128,7 @@ int main() {
     RUN_TEST(test_start_match_noop_when_not_lobby);
     RUN_TEST(test_countdown_completes_and_transitions_to_racing);
     RUN_TEST(test_knockoff_eliminates_car);
-    RUN_TEST(test_two_knockoffs_end_round);
+    RUN_TEST(test_single_knockoff_ends_round);
     RUN_TEST(test_survivor_gets_round_win);
     RUN_TEST(test_duplicate_knockoff_ignored);
     RUN_TEST(test_match_end_fires_after_rounds_to_win);

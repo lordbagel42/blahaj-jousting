@@ -8,7 +8,7 @@ class GameEngine {
 public:
     using Bus = EventBus<GameEvent, GameContext>;
 
-    static constexpr int      CARS_PER_ROUND        = 3;
+    static constexpr int      CARS_PER_ROUND        = 2;
     static constexpr int      COUNTDOWN_SECONDS      = 3;
     static constexpr uint32_t ROUND_END_PAUSE_MS     = 3000;
 

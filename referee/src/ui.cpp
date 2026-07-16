@@ -135,14 +135,14 @@ static void updateStatusBar() {
     // Compact form for the cramped header row.
     char compact[24];
     int coff = snprintf(compact, sizeof(compact), "R%d", ctx.round);
-    for (int i = 0; i < 3 && coff < (int)sizeof(compact); i++)
+    for (int i = 0; i < 2 && coff < (int)sizeof(compact); i++)
         coff += snprintf(compact + coff, sizeof(compact) - coff, " %d:%d", i+1, ctx.round_wins[i]);
     lv_label_set_text(round_label, compact);
 
     // Full form for the Match tab, which has room to spare.
     char full[48];
     int off = snprintf(full, sizeof(full), "Rnd %d  Wins:", ctx.round);
-    for (int i = 0; i < 3 && off < (int)sizeof(full); i++)
+    for (int i = 0; i < 2 && off < (int)sizeof(full); i++)
         off += snprintf(full + off, sizeof(full) - off, " P%d:%d", i+1, ctx.round_wins[i]);
     lv_label_set_text(match_state_label, stateName(ctx.state));
     lv_label_set_text(match_round_label, full);
@@ -562,7 +562,7 @@ void ui_build() {
     lv_label_set_text(match_state_label, "LOBBY");
 
     match_round_label = lv_label_create(match_status_row);
-    lv_label_set_text(match_round_label, "Rnd 0  Wins: P1:0 P2:0 P3:0");
+    lv_label_set_text(match_round_label, "Rnd 0  Wins: P1:0 P2:0");
 
     lv_obj_t* btn_row = lv_obj_create(tab_match);
     lv_obj_remove_style_all(btn_row);
