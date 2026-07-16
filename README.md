@@ -24,4 +24,4 @@ this insanity has a full object oriented API built on top of somewhere around a 
 Total cost: ~$88
 
 
-made with love & nearly lethal levels of caffeine by @lordbagel42, @williamprime, and @kaipereira. and @claude.
+made with love & nearly lethal levels of caffeine by https://github.com/lordbagel42,  https://github.com/williamprime, and https://github.com/kaipereira. and claude.
