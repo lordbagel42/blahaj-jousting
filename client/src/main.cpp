@@ -26,8 +26,8 @@ ClientNode         client(input, DRIVE_AXIS_THROTTLE);
 #else
 // Full 2-axis joystick — only valid on hardware with two independent ADC
 // pins (e.g. ESP32). Not usable on D1 Mini.
-static constexpr uint8_t PIN_JOY_X = 1;
-static constexpr uint8_t PIN_JOY_Y = 2;
+static constexpr uint8_t PIN_JOY_X = 32;
+static constexpr uint8_t PIN_JOY_Y = 33;
 JoystickInput input(PIN_JOY_X, PIN_JOY_Y);
 // ButtonInput input(PIN_UP, PIN_DOWN, PIN_LEFT, PIN_RIGHT);  // alternative
 ClientNode client(input);
