@@ -16,11 +16,23 @@ DriveCommand SingleAxisJoystick::read() {
 
 int8_t SingleAxisJoystick::mapAxis(int raw) const {
 #if defined(ESP8266)
-    constexpr int ADC_MAX = 1023;  // ESP8266: single 10-bit ADC (A0)
+    constexpr float ADC_MAX = 1023.0f;
 #else
-    constexpr int ADC_MAX = 4095;  // ESP32: 12-bit ADC
+    constexpr float ADC_MAX = 4095.0f;
 #endif
-    int centered = (raw * 254 / ADC_MAX) - 127;
-    if (centered > -_deadzone && centered < _deadzone) return 0;
-    return static_cast<int8_t>(centered);
+
+    // Map to float range -127.0 to 127.0
+    float val = ((static_cast<float>(raw) / ADC_MAX) * 254.0f) - 127.0f;
+
+    // Apply deadzone with smooth linear re-mapping
+    if (abs(val) < _deadzone) {
+        return 0;
+    }
+
+    // Rescale the remaining range (deadzone to 127) back to (0 to 127)
+    float sign = (val > 0) ? 1.0f : -1.0f;
+    float rescaled = sign * ((abs(val) - _deadzone) / (127.0f - _deadzone)) * 127.0f;
+
+    // Constrain and cast
+    return static_cast<int8_t>(constrain(round(rescaled), -127, 127));
 }
