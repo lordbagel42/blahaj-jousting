@@ -1,4 +1,5 @@
 // client/src/single_axis_joystick.cpp
+// Fixed mapAxis deadzone handling
 #include "single_axis_joystick.h"
 #include <Arduino.h>
 
